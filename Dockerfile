@@ -1,15 +1,6 @@
-FROM alpine:3.15
-LABEL maintainer="ITBM"
+FROM alpine:3.17
 
-RUN apk update &&
-	apk add coreutils &&
-	apk add postgresql15-client &&
-	apk add python3 py3-pip && pip3 install --upgrade pip && pip3 install awscli &&
-	apk add openssl &&
-	apk add curl &&
-	curl -L --insecure https://github.com/odise/go-cron/releases/download/v0.0.6/go-cron-linux.gz | zcat >/usr/local/bin/go-cron && chmod u+x /usr/local/bin/go-cron &&
-	apk del curl &&
-	rm -rf /var/cache/apk/*
+RUN apk update && apk add coreutils postgresql15-client python3 py3-pip && pip3 install --upgrade pip && pip3 install awscli && apk add openssl curl && curl -L --insecure https://github.com/odise/go-cron/releases/download/v0.0.6/go-cron-linux.gz | zcat >/usr/local/bin/go-cron && chmod u+x /usr/local/bin/go-cron && apk del curl && rm -rf /var/cache/apk/*
 
 ENV POSTGRES_DATABASE **None**
 ENV POSTGRES_HOST **None**
