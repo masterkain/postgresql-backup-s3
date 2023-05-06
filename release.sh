@@ -4,6 +4,6 @@ docker buildx create --use
 docker buildx ls
 docker buildx build \
   --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 \
-  --tag masterkain/postgresql-backup-s3:0.0.2 \
+  --tag masterkain/postgresql-backup-s3:1.0.1 \
   --push \
   .

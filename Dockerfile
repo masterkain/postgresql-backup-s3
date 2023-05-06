@@ -1,6 +1,11 @@
-FROM alpine:3.17
+# docker build -t masterkain/postgresql-backup-s3:latest -f Dockerfile .
+# docker run -p 3000:3000 masterkain/postgresql-backup-s3:latest
 
-RUN apk update && apk add coreutils postgresql15-client python3 py3-pip && pip3 install --upgrade pip && pip3 install awscli && apk add openssl curl && curl -L --insecure https://github.com/odise/go-cron/releases/download/v0.0.6/go-cron-linux.gz | zcat >/usr/local/bin/go-cron && chmod u+x /usr/local/bin/go-cron && apk del curl && rm -rf /var/cache/apk/*
+FROM ruby:3.2-alpine
+
+COPY --from=postgres:15-alpine /usr/local/bin/pg_* /usr/local/bin/
+
+RUN apk update && apk add coreutils python3 py3-pip openssl curl && pip3 install --upgrade pip && pip3 install awscli && curl -L --insecure https://github.com/odise/go-cron/releases/download/v0.0.6/go-cron-linux.gz | zcat >/usr/local/bin/go-cron && chmod u+x /usr/local/bin/go-cron && apk del curl && rm -rf /var/cache/apk/*
 
 ENV POSTGRES_DATABASE **None**
 ENV POSTGRES_HOST **None**
@@ -20,6 +25,6 @@ ENV ENCRYPTION_PASSWORD **None**
 ENV DELETE_OLDER_THAN **None**
 
 ADD run.sh run.sh
-ADD backup.sh backup.sh
+ADD backup.rb backup.rb
 
 CMD ["sh", "run.sh"]
