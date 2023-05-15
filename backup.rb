@@ -26,7 +26,6 @@ ENV["PGPASSWORD"] = ENV["POSTGRES_PASSWORD"]
 postgres_host = ENV["POSTGRES_HOST"]
 postgres_port = ENV["POSTGRES_PORT"] || "5432"
 postgres_user = ENV["POSTGRES_USER"]
-postgres_extra_opts = ENV["POSTGRES_EXTRA_OPTS"] || ""
 postgres_host_opts = "-h #{postgres_host} -p #{postgres_port} -U #{postgres_user}"
 
 # List databases
@@ -39,11 +38,11 @@ databases = stdout.split("\n").map(&:strip)
 databases.each do |database|
   src_file = "#{database}.dump"
   dest_file = "#{database}_#{DateTime.now.strftime("%Y-%m-%dT%H:%M:%SZ")}.dump"
-  cmd = "pg_dump #{postgres_host_opts} #{postgres_extra_opts} #{database} -Fc -O -x > #{src_file}"
+  cmd = "pg_dump #{postgres_host_opts} #{database} -Fc -O -x > #{src_file}"
   stdout, stderr, status = Open3.capture3(cmd)
   fail("Failed to create database dump for #{database}: #{stderr}") unless status.success?
   # Encrypt database dump if encryption password is set
-  if ENV["ENCRYPTION_PASSWORD"]
+  if ENV["ENCRYPTION_PASSWORD"] && ENV["ENCRYPTION_PASSWORD"] != "**None**"
     cmd = "openssl enc -aes-256-cbc -in #{src_file} -out #{src_file}.enc -k #{ENV["ENCRYPTION_PASSWORD"]}"
     stdout, stderr, status = Open3.capture3(cmd)
     fail("Failed to encrypt database dump for #{database}: #{stderr}") unless status.success?
@@ -52,14 +51,16 @@ databases.each do |database|
     dest_file += ".enc"
   end
   # Upload database dump to S3
-  cmd = "aws s3 cp #{src_file} s3://#{ENV["S3_BUCKET"]}/#{ENV["S3_PREFIX"]}/#{dest_file}"
+  endpoint_option = ENV["S3_ENDPOINT"] ? "--endpoint-url #{ENV["S3_ENDPOINT"]}" : ""
+  cmd = "aws s3 cp #{endpoint_option} #{src_file} s3://#{ENV["S3_BUCKET"]}/#{ENV["S3_PREFIX"]}/#{dest_file}"
   stdout, stderr, status = Open3.capture3(cmd)
   fail("Failed to upload database dump for #{database} to S3: #{stderr}") unless status.success?
 end
 
 # Delete old backups if DELETE_OLDER_THAN is set
 if ENV["DELETE_OLDER_THAN"]
-  cmd = "aws s3 ls s3://#{ENV["S3_BUCKET"]}/#{ENV["S3_PREFIX"]}/ | grep -v ' PRE ' | while read -r line; do fileName=$(echo $line | awk '{print $4}'); created=$(echo $line | awk '{print $1 " " $2}'); created=$(date -d \"$created\" +%s); older_than=$(date -d \"#{ENV["DELETE_OLDER_THAN"]}\" +%s); if [ $created -lt $older_than ]; then if [ $fileName != '' ]; then echo \"DELETING ${fileName}\"; aws s3 rm s3://#{ENV["S3_BUCKET"]}/#{ENV["S3_PREFIX"]}/$fileName; fi; else echo \"${fileName} not older than #{ENV["DELETE_OLDER_THAN"]}\"; fi; done"
+  endpoint_option = ENV["S3_ENDPOINT"] ? "--endpoint-url #{ENV["S3_ENDPOINT"]}" : ""
+  cmd = "aws s3 ls #{endpoint_option} s3://#{ENV["S3_BUCKET"]}/#{ENV["S3_PREFIX"]}/ | grep -v ' PRE ' | while read -r line; do fileName=$(echo $line | awk '{print $4}'); created=$(echo $line | awk '{print $1 " " $2}'); created=$(date -d \"$created\" +%s); older_than=$(date -d \"#{ENV["DELETE_OLDER_THAN"]}\" +%s); if [ $created -lt $older_than ]; then if [ $fileName != '' ]; then echo \"DELETING ${fileName}\"; aws s3 rm #{endpoint_option} s3://#{ENV["S3_BUCKET"]}/#{ENV["S3_PREFIX"]}/$fileName; fi; else echo \"${fileName} not older than #{ENV["DELETE_OLDER_THAN"]}\"; fi; done"
   stdout, stderr, status = Open3.capture3(cmd)
   fail("Failed to delete old backups: #{stderr}") unless status.success?
 end
