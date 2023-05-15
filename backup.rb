@@ -37,8 +37,8 @@ databases = stdout.split("\n").map(&:strip)
 
 # Create database dumps
 databases.each do |database|
-  src_file = "#{database}.sql.gz"
-  dest_file = "#{database}_#{DateTime.now.strftime("%Y-%m-%dT%H:%M:%SZ")}.sql.gz"
+  src_file = "#{database}.dump"
+  dest_file = "#{database}_#{DateTime.now.strftime("%Y-%m-%dT%H:%M:%SZ")}.dump"
   cmd = "pg_dump #{postgres_host_opts} #{postgres_extra_opts} #{database} -Fc -O -x > #{src_file}"
   stdout, stderr, status = Open3.capture3(cmd)
   fail("Failed to create database dump for #{database}: #{stderr}") unless status.success?
