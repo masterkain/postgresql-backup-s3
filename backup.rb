@@ -27,7 +27,7 @@ postgres_host = ENV["POSTGRES_HOST"]
 postgres_port = ENV["POSTGRES_PORT"] || "5432"
 postgres_user = ENV["POSTGRES_USER"]
 postgres_extra_opts = ENV["POSTGRES_EXTRA_OPTS"] || ""
-postgres_host_opts = "-h #{postgres_host} -p #{postgres_port} -U #{postgres_user} #{postgres_extra_opts}"
+postgres_host_opts = "-h #{postgres_host} -p #{postgres_port} -U #{postgres_user}"
 
 # List databases
 cmd = "psql #{postgres_host_opts} -t -A -c 'SELECT datname FROM pg_database WHERE datistemplate = false'"
@@ -39,7 +39,7 @@ databases = stdout.split("\n").map(&:strip)
 databases.each do |database|
   src_file = "#{database}.sql.gz"
   dest_file = "#{database}_#{DateTime.now.strftime("%Y-%m-%dT%H:%M:%SZ")}.sql.gz"
-  cmd = "pg_dump #{postgres_host_opts} #{database} -Fc -O -x > #{src_file}"
+  cmd = "pg_dump #{postgres_host_opts} #{postgres_extra_opts} #{database} -Fc -O -x > #{src_file}"
   stdout, stderr, status = Open3.capture3(cmd)
   fail("Failed to create database dump for #{database}: #{stderr}") unless status.success?
   # Encrypt database dump if encryption password is set
