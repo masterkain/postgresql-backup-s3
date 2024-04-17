@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
       - name: postgresql
-        image: itbm/postgresql-backup-s3
+        image: masterkain/postgresql-backup-s3:16.0.2
         imagePullPolicy: Always
         env:
         - name: POSTGRES_DATABASE
