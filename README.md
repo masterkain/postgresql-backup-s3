@@ -16,53 +16,91 @@ docker run -e S3_ACCESS_KEY_ID=key -e S3_SECRET_ACCESS_KEY=secret -e S3_BUCKET=m
 Deploy this container within a Kubernetes cluster by setting up the deployment as shown below. Be sure to update the environment variables according to your configuration needs.
 
 ```yaml
-apiVersion: v1
-kind: Namespace
+apiVersion: batch/v1
+kind: CronJob
 metadata:
-  name: backup
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: postgresql-backup
-  namespace: backup
+  name: postgres-backup
+  namespace: postgres
 spec:
-  selector:
-    matchLabels:
-      app: postgresql-backup
-  strategy:
-    type: Recreate
-  template:
-    metadata:
-      labels:
-        app: postgresql-backup
+  schedule: "0 1 * * *"
+  failedJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+  jobTemplate:
     spec:
-      containers:
-      - name: postgresql
-        image: masterkain/postgresql-backup-s3:16.0.2
-        imagePullPolicy: Always
-        env:
-        - name: POSTGRES_DATABASE
-          value: "dbname"
-        - name: POSTGRES_HOST
-          value: "localhost"
-        - name: POSTGRES_PORT
-          value: "5432"
-        - name: POSTGRES_PASSWORD
-          value: "password"
-        - name: POSTGRES_USER
-          value: "user"
-        - name: S3_ACCESS_KEY_ID
-          value: "key"
-        - name: S3_SECRET_ACCESS_KEY
-          value: "secret"
-        - name: S3_BUCKET
-          value: "my-bucket"
-        - name: S3_ENDPOINT
-          value: ""  # Optional
-        - name: S3_PREFIX
-          value: "backup"
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: backup
+            image: masterkain/postgresql-backup-s3:16.0.2
+            imagePullPolicy: Always
+            env:
+            - name: POSTGRES_DATABASE
+              value: "dbname"
+            - name: POSTGRES_HOST
+              value: "localhost"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_PASSWORD
+              value: "password"
+            - name: POSTGRES_USER
+              value: "user"
+            - name: S3_ACCESS_KEY_ID
+              value: "key"
+            - name: S3_SECRET_ACCESS_KEY
+              value: "secret"
+            - name: S3_BUCKET
+              value: "my-bucket"
+            - name: S3_ENDPOINT
+              value: ""  # Optional
+            - name: S3_PREFIX
+              value: "backup"
+
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: postgres
+spec:
+  schedule: "0 1 * * *"
+  failedJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: masterkain/postgresql-backup-s3:16.0.2
+              imagePullPolicy: IfNotPresent
+              env:
+              - name: POSTGRES_HOST
+                value: "postgres-postgresql.postgres.svc.cluster.local"
+              - name: POSTGRES_PORT
+                value: "5432"
+              - name: POSTGRES_PASSWORD
+                value: "xxxx"
+              - name: POSTGRES_USER
+                value: "postgres"
+              - name: S3_ACCESS_KEY_ID
+                value: "xxxx"
+              - name: S3_REGION
+                value: "fr-par"
+              - name: S3_SECRET_ACCESS_KEY
+                value: "xxxx"
+              - name: S3_BUCKET
+                value: "k8s-db-backups"
+              - name: S3_ENDPOINT
+                value: "" # optional
+              - name: S3_PREFIX
+                value: "microk8s"
+              - name: DELETE_OLDER_THAN
+                value: "30 days ago"
+
 ```
 
 ## Environment Variables
