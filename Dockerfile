@@ -1,27 +1,36 @@
 # docker build -t masterkain/postgresql-backup-s3:latest -f Dockerfile .
 # docker run masterkain/postgresql-backup-s3:latest
 
-FROM ruby:3.2-alpine
+# Use Python on Alpine Linux as the base image
+FROM python:3-alpine
 
-RUN apk update && apk add coreutils postgresql15-client python3 py3-pip openssl curl && pip3 install --upgrade pip && pip3 install awscli && curl -L --insecure https://github.com/odise/go-cron/releases/download/v0.0.6/go-cron-linux.gz | zcat >/usr/local/bin/go-cron && chmod u+x /usr/local/bin/go-cron && apk del curl && rm -rf /var/cache/apk/*
+# Set the working directory to /app
+WORKDIR /app
 
-ENV S3_ACCESS_KEY_ID=
-ENV S3_SECRET_ACCESS_KEY=
-ENV S3_BUCKET=
-ENV S3_ENDPOINT=
-ENV S3_REGION=us-west-1
-ENV S3_PREFIX=backup
-ENV S3_S3V4="yes"
+# Install necessary packages
+RUN apk update && apk add --no-cache postgresql16-client && pip install --no-cache-dir --upgrade pip awscli
 
-ENV POSTGRES_HOST=
-ENV POSTGRES_PORT=5432
-ENV POSTGRES_USER=
-ENV POSTGRES_PASSWORD=
+# Set environment variables with default values where applicable
+ENV S3_ACCESS_KEY_ID= \
+  S3_SECRET_ACCESS_KEY= \
+  S3_BUCKET= \
+  S3_ENDPOINT= \
+  S3_REGION=us-west-1 \
+  S3_PREFIX=backup \
+  S3_S3V4="yes" \
+  POSTGRES_HOST= \
+  POSTGRES_PORT=5432 \
+  POSTGRES_USER= \
+  POSTGRES_PASSWORD= \
+  ENCRYPTION_PASSWORD= \
+  DELETE_OLDER_THAN=
 
-ENV ENCRYPTION_PASSWORD=
-ENV DELETE_OLDER_THAN=
+# Add the run script and the Python backup script to the container
+ADD run.sh backup.py ./
 
-ADD run.sh run.sh
-ADD backup.rb backup.rb
+# Ensure the run script is executable
+RUN chmod +x run.sh
 
-CMD ["sh", "run.sh"]
+# Set the entry point to the run script and default command to execute the Python backup script
+ENTRYPOINT ["./run.sh"]
+CMD ["python", "backup.py"]
