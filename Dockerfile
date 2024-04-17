@@ -8,7 +8,7 @@ FROM python:3-alpine
 WORKDIR /app
 
 # Install necessary packages
-RUN apk update && apk add --no-cache postgresql16-client aws-cli
+RUN apk update && apk add --no-cache postgresql16-client && pip install --no-cache-dir --upgrade pip awscli
 
 # Set environment variables with default values where applicable
 ENV S3_ACCESS_KEY_ID= \
