@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
+import datetime
 import logging
 import os
 import subprocess
 import sys
-from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -28,9 +28,10 @@ def run_command(command):
     try:
         result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
         logging.info("Command output: " + result.stdout.strip())
-        return result.stdout
+        return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        fail(f"Command failed: {e.stderr.strip()}")
+        print(f"Command failed: {e.stderr.strip()}")
+        return None
 
 
 def list_databases(postgres_opts):
@@ -70,22 +71,28 @@ def upload_to_s3(src_file, bucket, prefix, endpoint_option=""):
 
 
 def cleanup_old_backups(bucket, prefix, older_than, endpoint_option=""):
-    logging.info(f"Cleaning up old backups older than {older_than}")
-    list_command = f"aws s3 ls {endpoint_option} s3://{bucket}/{prefix}/ | grep -v ' PRE '"
+    list_command = f"aws s3 ls {endpoint_option} s3://{bucket}/{prefix}/"
     output = run_command(list_command)
-    lines = output.splitlines() if output else []
+    if not output:
+        print("Failed to list S3 bucket contents.")
+        return
+
+    lines = output.splitlines()
+    older_than_date = datetime.datetime.now() - datetime.timedelta(days=int(older_than.split()[0]))
+
     for line in lines:
         parts = line.split()
-        file_date = " ".join(parts[:2])
+        if len(parts) < 4:
+            continue
+        last_modified = " ".join(parts[:2])
         file_name = parts[3]
-        command = f"""
-            created=$(date -d "{file_date}" +%s);
-            older_than=$(date -d "{older_than}" +%s);
-            if [ $created -lt $older_than ]; then
-                aws s3 rm {endpoint_option} s3://{bucket}/{prefix}/{file_name};
-            fi
-        """
-        run_command(command)
+        last_modified_date = datetime.datetime.strptime(last_modified, "%Y-%m-%d %H:%M:%S")
+
+        if last_modified_date < older_than_date:
+            delete_command = f"aws s3 rm {endpoint_option} s3://{bucket}/{prefix}/{file_name}"
+            print(f"Deleting {file_name} as it is older than {older_than}")
+            delete_output = run_command(delete_command)
+            print(delete_output)
 
 
 def main():
