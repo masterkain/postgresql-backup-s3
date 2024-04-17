@@ -32,48 +32,6 @@ spec:
         spec:
           restartPolicy: Never
           containers:
-          - name: backup
-            image: masterkain/postgresql-backup-s3:16.0.2
-            imagePullPolicy: Always
-            env:
-            - name: POSTGRES_DATABASE
-              value: "dbname"
-            - name: POSTGRES_HOST
-              value: "localhost"
-            - name: POSTGRES_PORT
-              value: "5432"
-            - name: POSTGRES_PASSWORD
-              value: "password"
-            - name: POSTGRES_USER
-              value: "user"
-            - name: S3_ACCESS_KEY_ID
-              value: "key"
-            - name: S3_SECRET_ACCESS_KEY
-              value: "secret"
-            - name: S3_BUCKET
-              value: "my-bucket"
-            - name: S3_ENDPOINT
-              value: ""  # Optional
-            - name: S3_PREFIX
-              value: "backup"
-
-
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: postgres-backup
-  namespace: postgres
-spec:
-  schedule: "0 1 * * *"
-  failedJobsHistoryLimit: 1
-  successfulJobsHistoryLimit: 1
-  concurrencyPolicy: Forbid
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          restartPolicy: Never
-          containers:
             - name: backup
               image: masterkain/postgresql-backup-s3:16.0.2
               imagePullPolicy: IfNotPresent
