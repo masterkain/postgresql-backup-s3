@@ -67,7 +67,7 @@ Configure the container using the following environment variables:
 
 | Variable               | Default     | Required | Description |
 |------------------------|-------------|----------|-------------|
-| `POSTGRES_DATABASE`    |             | Yes      | Database to backup or 'all' for backing up all databases. |
+| `POSTGRES_DATABASE`    |             | Yes      | Database to backup or leave it for backing up all databases. |
 | `POSTGRES_HOST`        |             | Yes      | PostgreSQL server host. |
 | `POSTGRES_PORT`        | `5432`      | No       | PostgreSQL server port. |
 | `POSTGRES_USER`        |             | Yes      | PostgreSQL user name. |

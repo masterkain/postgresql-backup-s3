@@ -34,12 +34,16 @@ def run_command(command):
 
 
 def list_databases(postgres_opts):
-    logging.info("Listing databases...")
-    command = f"psql {postgres_opts} -t -A -c 'SELECT datname FROM pg_database WHERE datistemplate = false'"
-    output = run_command(command)
-    databases = output.split() if output else []
-    logging.info(f"Databases found: {databases}")
-    return databases
+    if os.getenv("POSTGRES_DATABASE"):
+        logging.info(f"Backing up specific database: {os.getenv('POSTGRES_DATABASE')}")
+        return [os.getenv("POSTGRES_DATABASE")]
+    else:
+        logging.info("Listing all databases...")
+        command = f"psql {postgres_opts} -t -A -c 'SELECT datname FROM pg_database WHERE datistemplate = false'"
+        output = run_command(command)
+        databases = output.split() if output else []
+        logging.info(f"Databases found: {databases}")
+        return databases
 
 
 def dump_database(db_name, postgres_opts, dest_file):
