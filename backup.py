@@ -60,19 +60,31 @@ def dump_database(db_name, postgres_opts, dest_file):
 
 
 def encrypt_dump(src_file, password):
+    if src_file is None:
+        return None
     logging.info(f"Encrypting dump file: {src_file}")
     enc_file = f"{src_file}.enc"
     command = f"openssl enc -aes-256-cbc -in {src_file} -out {enc_file} -k {password}"
-    if run_command(command):
+    try:
+        subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.remove(src_file)
         logging.info(f"Encrypted file created: {enc_file}")
         return enc_file
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to encrypt file {src_file}: {e.stderr.strip()}")
+        return None
 
 
 def upload_to_s3(src_file, bucket, prefix, endpoint_option=""):
+    if src_file is None:
+        return
     logging.info(f"Uploading {src_file} to S3: s3://{bucket}/{prefix}/{src_file}")
     command = f"aws s3 cp {endpoint_option} {src_file} s3://{bucket}/{prefix}/{src_file}"
-    run_command(command)
+    try:
+        subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info(f"File {src_file} uploaded successfully")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to upload file {src_file} to S3: {e.stderr.strip()}")
 
 
 def cleanup_old_backups(bucket, prefix, older_than, endpoint_option=""):
