@@ -50,8 +50,13 @@ def list_databases(postgres_opts):
 def dump_database(db_name, postgres_opts, dest_file):
     logging.info(f"Dumping database: {db_name}")
     command = f"pg_dump {postgres_opts} {db_name} -Fc -O -x > {dest_file}"
-    if run_command(command):
+    try:
+        subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info(f"Database {db_name} dumped successfully to {dest_file}")
         return dest_file
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to dump database {db_name}: {e.stderr.strip()}")
+        return None
 
 
 def encrypt_dump(src_file, password):
