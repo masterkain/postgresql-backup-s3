@@ -35,7 +35,7 @@ def run_command(command):
 
 
 def get_postgres_version(postgres_opts):
-    command = f"psql {postgres_opts} -t -c 'SHOW server_version;'"
+    command = f"psql {postgres_opts} -d postgres -t -c 'SHOW server_version;'"
     version_output = run_command(command)
     if version_output:
         # Extract major version part (e.g., '13' from '13.3')
