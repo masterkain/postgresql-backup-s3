@@ -34,6 +34,20 @@ def run_command(command):
         return None
 
 
+def get_postgres_version(postgres_opts):
+    command = f"psql {postgres_opts} -t -c 'SHOW server_version;'"
+    version_output = run_command(command)
+    if version_output:
+        # Extract major version part (e.g., '13' from '13.3')
+        major_version = version_output.split()[0].split(".")[0]
+        version_prefix = f"pg{major_version}"
+        logging.info(f"PostgreSQL server version determined: {version_prefix}")
+        return version_prefix
+    else:
+        logging.error("Failed to determine PostgreSQL server version.")
+        return None
+
+
 def list_databases(postgres_opts):
     if os.getenv("POSTGRES_DATABASE"):
         logging.info(f"Backing up specific database: {os.getenv('POSTGRES_DATABASE')}")
@@ -76,7 +90,7 @@ def encrypt_dump(src_file, password):
 
 
 def upload_to_s3(src_file, bucket, prefix, endpoint_option=""):
-    if src_file is None:
+    if not src_file:
         return
     logging.info(f"Uploading {src_file} to S3: s3://{bucket}/{prefix}/{src_file}")
     command = f"aws s3 cp {endpoint_option} {src_file} s3://{bucket}/{prefix}/{src_file}"
@@ -121,22 +135,27 @@ def main():
     os.environ["PGPASSWORD"] = os.getenv("POSTGRES_PASSWORD", "")
 
     postgres_opts = f"-h {os.getenv('POSTGRES_HOST', '')} -p {os.getenv('POSTGRES_PORT', '5432')} -U {os.getenv('POSTGRES_USER', '')}"
+    version_prefix = get_postgres_version(postgres_opts)
+    if version_prefix is None:
+        fail("Could not determine PostgreSQL version for S3 prefixing.")
+
+    bucket = os.getenv("S3_BUCKET")
+    original_prefix = os.getenv("S3_PREFIX", "")
+    full_prefix = f"{original_prefix}/{version_prefix}" if original_prefix else version_prefix
+    endpoint_option = f"--endpoint-url {os.getenv('S3_ENDPOINT')}" if os.getenv("S3_ENDPOINT") else ""
 
     databases = list_databases(postgres_opts)
     timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-    bucket = os.getenv("S3_BUCKET")
-    prefix = os.getenv("S3_PREFIX", "")
-    endpoint_option = f"--endpoint-url {os.getenv('S3_ENDPOINT')}" if os.getenv("S3_ENDPOINT") else ""
 
     for db in databases:
         dump_file = dump_database(db, postgres_opts, f"{db}_{timestamp}.dump")
         if dump_file and os.getenv("ENCRYPTION_PASSWORD"):
             dump_file = encrypt_dump(dump_file, os.getenv("ENCRYPTION_PASSWORD"))
         if dump_file:
-            upload_to_s3(dump_file, bucket, prefix, endpoint_option)
+            upload_to_s3(dump_file, bucket, full_prefix, endpoint_option)
 
     if os.getenv("DELETE_OLDER_THAN"):
-        cleanup_old_backups(bucket, prefix, os.getenv("DELETE_OLDER_THAN"), endpoint_option)
+        cleanup_old_backups(bucket, full_prefix, os.getenv("DELETE_OLDER_THAN"), endpoint_option)
 
     logging.info("SQL backup process finished.")
 
