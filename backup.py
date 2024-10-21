@@ -54,7 +54,7 @@ def list_databases(postgres_opts):
         return [os.getenv("POSTGRES_DATABASE")]
     else:
         logging.info("Listing all databases...")
-        command = f"psql {postgres_opts} -t -A -c 'SELECT datname FROM pg_database WHERE datistemplate = false'"
+        command = f"psql {postgres_opts} -d postgres -t -A -c 'SELECT datname FROM pg_database WHERE datistemplate = false'"
         output = run_command(command)
         databases = output.split() if output else []
         logging.info(f"Databases found: {databases}")
