@@ -63,7 +63,7 @@ def list_databases(postgres_opts):
 
 def dump_database(db_name, postgres_opts, dest_file):
     logging.info(f"Dumping database: {db_name}")
-    command = f"pg_dump {postgres_opts} {db_name} -Fc -O -x > {dest_file}"
+    command = f"pg_dump {postgres_opts} {db_name} --format=plain --no-owner --clean --no-acl | gzip > {dest_file}"
     try:
         subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         logging.info(f"Database {db_name} dumped successfully to {dest_file}")
@@ -148,7 +148,7 @@ def main():
     timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     for db in databases:
-        dump_file = dump_database(db, postgres_opts, f"{db}_{timestamp}.dump")
+        dump_file = dump_database(db, postgres_opts, f"{db}_{timestamp}.sql.gz")
         if dump_file and os.getenv("ENCRYPTION_PASSWORD"):
             dump_file = encrypt_dump(dump_file, os.getenv("ENCRYPTION_PASSWORD"))
         if dump_file:
