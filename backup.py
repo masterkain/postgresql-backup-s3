@@ -64,9 +64,13 @@ def list_databases(postgres_opts):
 def dump_database(db_name, postgres_opts, dest_file):
     logging.info(f"Dumping database: {db_name}")
     command = f"pg_dump {postgres_opts} {db_name} --format=plain --no-owner --clean --no-acl | gzip > {dest_file}"
+    logging.info(f"Full dump command: {command}")
     try:
         subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Get the file size of the resulting dump file
+        file_size = os.path.getsize(dest_file)
         logging.info(f"Database {db_name} dumped successfully to {dest_file}")
+        logging.info(f"Resulting dump file size: {file_size} bytes")
         return dest_file
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to dump database {db_name}: {e.stderr.strip()}")
@@ -101,7 +105,7 @@ def upload_to_s3(src_file, bucket, prefix, endpoint_option=""):
         logging.error(f"Failed to upload file {src_file} to S3: {e.stderr.strip()}")
 
 
-def cleanup_old_backups(bucket, prefix, older_than, endpoint_option=""):
+def cleanup_old_backups(bucket, prefix, older_than, active_databases, endpoint_option=""):
     list_command = f"aws s3 ls {endpoint_option} s3://{bucket}/{prefix}/"
     output = run_command(list_command)
     if not output:
@@ -109,6 +113,7 @@ def cleanup_old_backups(bucket, prefix, older_than, endpoint_option=""):
         return
 
     lines = output.splitlines()
+    # Calculate the cutoff date based on the provided DELETE_OLDER_THAN value (in days)
     older_than_date = datetime.datetime.now() - datetime.timedelta(days=int(older_than.split()[0]))
 
     for line in lines:
@@ -117,7 +122,17 @@ def cleanup_old_backups(bucket, prefix, older_than, endpoint_option=""):
             continue
         last_modified = parts[0] + " " + parts[1]
         file_name = parts[3]
-        last_modified_date = datetime.datetime.strptime(last_modified, "%Y-%m-%d %H:%M:%S")
+        try:
+            last_modified_date = datetime.datetime.strptime(last_modified, "%Y-%m-%d %H:%M:%S")
+        except ValueError as ve:
+            logging.error(f"Could not parse date from {last_modified}: {ve}")
+            continue
+
+        # Extract database name from file name (assumes format: dbname_timestamp.sql.gz or dbname_timestamp.sql.gz.enc)
+        db_name = file_name.split("_")[0]
+        if db_name not in active_databases:
+            logging.info(f"Skipping deletion for {file_name} as database '{db_name}' is not in the current backup list.")
+            continue
 
         if last_modified_date < older_than_date:
             delete_command = f"aws s3 rm {endpoint_option} s3://{bucket}/{prefix}/{file_name}"
@@ -155,7 +170,8 @@ def main():
             upload_to_s3(dump_file, bucket, full_prefix, endpoint_option)
 
     if os.getenv("DELETE_OLDER_THAN"):
-        cleanup_old_backups(bucket, full_prefix, os.getenv("DELETE_OLDER_THAN"), endpoint_option)
+        # Pass the active databases to cleanup_old_backups so that backups for databases not found are skipped.
+        cleanup_old_backups(bucket, full_prefix, os.getenv("DELETE_OLDER_THAN"), databases, endpoint_option)
 
     logging.info("SQL backup process finished.")
 
