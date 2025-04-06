@@ -225,7 +225,7 @@ def cleanup_old_backups(bucket, prefix, older_than_str, active_databases, endpoi
     # Regex to match the timestamp and suffixes at the end of the filename
     # Matches _YYYY-MM-DDTHHMMSSZ.sql.gz(.enc)? - Corrected Timestamp format
     # Captures the part *before* this pattern as group 1 (the database name)
-    filename_pattern = re.compile(r"^(.*)_(\d{4}-\d{2}-\d{2}T\d{6}Z)\.sql\.gz(?:\.enc)?$")
+    filename_pattern = re.compile(r"^(.*)_(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z|T\d{6}Z))\.sql\.gz(?:\.enc)?$")
 
     list_command = f"aws s3 ls {endpoint_option} s3://{bucket}/{prefix}/"
     output = run_command(list_command)

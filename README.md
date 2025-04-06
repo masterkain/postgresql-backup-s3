@@ -60,7 +60,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: masterkain/postgresql-backup-s3:17.0.1
+              image: masterkain/postgresql-backup-s3:17.0.4
               imagePullPolicy: IfNotPresent
               env:
                 - name: POSTGRES_HOST
@@ -82,9 +82,9 @@ spec:
                 - name: S3_ENDPOINT
                   value: ""  # Optional: custom S3 endpoint (e.g., for Minio)
                 - name: S3_PREFIX
-                  value: "microk8s"
+                  value: "k3s"
                 - name: DELETE_OLDER_THAN
-                  value: "30 days ago"
+                  value: "30 days"
                 - name: ENCRYPTION_PASSWORD
                   value: "optional_encryption_password"  # Optional: enable encryption
 ```
@@ -105,7 +105,7 @@ spec:
 | `S3_REGION`            | `us-west-1` | No       | AWS region for the S3 bucket. |
 | `S3_ENDPOINT`          | _(none)_    | No       | Custom S3 endpoint URL for S3-compatible services (e.g., Minio). |
 | `ENCRYPTION_PASSWORD`  | _(none)_    | No       | Password for encrypting the backup file using AES-256-CBC encryption. |
-| `DELETE_OLDER_THAN`    | _(none)_    | No       | Duration (e.g., "30 days ago") after which backups will be deleted from S3 **if** the database is still active. Backups for databases that no longer exist will be retained. |
+| `DELETE_OLDER_THAN`    | _(none)_    | No       | Duration (e.g., "30 days") after which backups will be deleted from S3 **if** the database is still active. Backups for databases that no longer exist will be retained. |
 
 ## How It Works
 
