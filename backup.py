@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import datetime
+import gzip
 import logging
 import os
 import re
+import shlex
 import subprocess
 import sys
 
@@ -119,9 +121,15 @@ def list_databases(postgres_opts):
 def dump_database(db_name, postgres_opts, dest_file):
     """Dumps a specific database to a gzipped file."""
     logging.info(f"Attempting to dump database: {db_name} to {dest_file}")
-    # Use --no-password option as PGPASSWORD env var is set
-    # Use plain format for better diffability and simplicity, compressed with gzip
-    command = f"pg_dump {postgres_opts} --no-password --dbname={db_name} " f"--format=plain --no-owner --clean --no-acl " f"| gzip > {dest_file}"
+    quoted_db_name = shlex.quote(db_name)
+    quoted_dest_file = shlex.quote(dest_file)
+    # `set -o pipefail` ensures we fail if pg_dump aborts before gzip finishes.
+    command = (
+        "set -o pipefail; "
+        f"pg_dump {postgres_opts} --no-password --dbname={quoted_db_name} "
+        "--format=plain --no-owner --clean --no-acl "
+        f"| gzip > {quoted_dest_file}"
+    )
     # Log a less verbose version of the command for security/clarity
     logging.debug(f"Full dump command: {command}")
 
@@ -131,6 +139,19 @@ def dump_database(db_name, postgres_opts, dest_file):
         process = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
         # Check if the destination file was created and has size > 0
         if os.path.exists(dest_file) and os.path.getsize(dest_file) > 0:
+            try:
+                with gzip.open(dest_file, "rb") as handle:
+                    first_byte = handle.read(1)
+            except OSError as gzip_error:
+                logging.error(f"Dump command produced an unreadable gzip file '{dest_file}': {gzip_error}")
+                os.remove(dest_file)
+                return None
+
+            if not first_byte:
+                logging.error(f"Dump command produced an empty gzip payload for '{db_name}'.")
+                os.remove(dest_file)
+                return None
+
             file_size = os.path.getsize(dest_file)
             logging.info(f"Database '{db_name}' dumped successfully to '{dest_file}' ({file_size} bytes).")
             return dest_file

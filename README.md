@@ -7,6 +7,9 @@ This Docker container facilitates the backup of PostgreSQL databases to AWS S3. 
 - **Backup All or Single Database:**
   Back up all non-template databases or a specific database by setting the `POSTGRES_DATABASE` environment variable.
 
+- **PostgreSQL 18 Client Included:**
+  The image ships with PostgreSQL 18 client tools so `pg_dump` stays compatible with the current `pg18` clusters.
+
 - **PostgreSQL Version Tagging:**
   The script automatically determines the PostgreSQL server version and appends a version prefix (e.g., `pg17`) to the backup path in S3.
 
@@ -15,6 +18,9 @@ This Docker container facilitates the backup of PostgreSQL databases to AWS S3. 
 
 - **S3 Upload:**
   Backup files are automatically uploaded to an AWS S3 bucket. A custom S3 endpoint is supported for S3-compatible services like Minio.
+
+- **Fail Fast on Broken Dumps:**
+  The backup step fails if `pg_dump` exits non-zero or if the resulting gzip contains no dump payload, preventing false-green 20-byte `.sql.gz` uploads.
 
 - **Intelligent Cleanup:**
   When enabled via the `DELETE_OLDER_THAN` variable, the script cleans up backups older than a specified duration. **Note:** Backups corresponding to databases that are no longer active (i.e. not present during the latest backup run) will be retained for historical reference.

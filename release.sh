@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e # Exit immediately if a command exits with a non-zero status.
 
-SCRIPT_VERSION="17.0.4"
+SCRIPT_VERSION="18.3.0"
 
 IMAGE_NAME="masterkain/postgresql-backup-s3"
 IMAGE_TAG="${SCRIPT_VERSION}"
