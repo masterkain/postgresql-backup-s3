@@ -41,7 +41,7 @@ docker run \
   -e POSTGRES_HOST=your_postgres_host \
   -e ENCRYPTION_PASSWORD=optional_encryption_password \  # Optional: enable backup encryption
   -e DELETE_OLDER_THAN="30 days ago" \  # Optional: delete backups older than 30 days (only if the database is still active)
-  masterkain/postgres-backup-s3
+  ghcr.io/masterkain/postgresql-backup-s3
 ```
 
 ## Kubernetes Deployment

@@ -3,7 +3,7 @@ set -e # Exit immediately if a command exits with a non-zero status.
 
 SCRIPT_VERSION="18.3.0"
 
-IMAGE_NAME="masterkain/postgresql-backup-s3"
+IMAGE_NAME="ghcr.io/masterkain/postgresql-backup-s3"
 IMAGE_TAG="${SCRIPT_VERSION}"
 LATEST_TAG="latest"
 
