@@ -131,6 +131,42 @@ class MainTest(unittest.TestCase):
         self.assertTrue(get_postgres_version.called)
         self.assertTrue(list_databases.called)
 
+    @mock.patch("backup.os.remove")
+    @mock.patch("backup.os.path.exists", return_value=True)
+    @mock.patch("backup.cleanup_old_backups")
+    @mock.patch("backup.upload_to_s3")
+    @mock.patch("backup.encrypt_dump", return_value=None)
+    @mock.patch("backup.dump_database", return_value="/tmp/failed-encryption.sql.gz")
+    @mock.patch("backup.list_databases", return_value=["only_database"])
+    @mock.patch("backup.get_postgres_version", return_value="pg18")
+    def test_main_fails_and_skips_retention_when_encryption_fails(
+        self,
+        get_postgres_version,
+        list_databases,
+        dump_database,
+        encrypt_dump,
+        upload_to_s3,
+        cleanup_old_backups,
+        path_exists,
+        remove_file,
+    ):
+        environment = self.backup_environment()
+        environment["ENCRYPTION_PASSWORD"] = "test-encryption-password"
+
+        with mock.patch.dict(os.environ, environment, clear=True):
+            with self.assertRaises(SystemExit) as raised:
+                backup.main()
+
+        self.assertEqual(1, raised.exception.code)
+        dump_database.assert_called_once()
+        encrypt_dump.assert_called_once()
+        upload_to_s3.assert_not_called()
+        cleanup_old_backups.assert_not_called()
+        path_exists.assert_called_once_with("/tmp/failed-encryption.sql.gz")
+        remove_file.assert_called_once_with("/tmp/failed-encryption.sql.gz")
+        self.assertTrue(get_postgres_version.called)
+        self.assertTrue(list_databases.called)
+
 
 if __name__ == "__main__":
     unittest.main()

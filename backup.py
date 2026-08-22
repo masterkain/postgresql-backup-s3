@@ -503,6 +503,7 @@ def main():
 
         successful_uploads = 0
         failed_dumps = 0
+        failed_encryptions = 0
         failed_uploads = 0
 
         for db in databases:
@@ -530,16 +531,20 @@ def main():
                     file_to_upload = encrypted_file_path  # Upload the encrypted file
                 else:
                     logging.error(
-                        f"Encryption failed for '{dumped_file_path}'. Will attempt to upload unencrypted file."
+                        f"Encryption failed for '{dumped_file_path}'. Skipping upload."
                     )
-                    # If encryption failed, we might still have the original dump file_to_upload remains dumped_file_path
-                    # Or if encrypt_dump cleaned up the source, file_to_upload might be invalid now. Check existence.
-                    if not os.path.exists(file_to_upload):
-                        logging.error(
-                            f"Original dump file '{file_to_upload}' also missing after failed encryption attempt. Cannot upload."
-                        )
-                        failed_dumps += 1  # Count as failure as nothing can be uploaded
-                        continue  # Skip upload for this DB
+                    failed_encryptions += 1
+                    if os.path.exists(file_to_upload):
+                        try:
+                            os.remove(file_to_upload)
+                            logging.info(
+                                f"Successfully cleaned up local file: {file_to_upload}"
+                            )
+                        except OSError as e:
+                            logging.warning(
+                                f"Could not remove local backup file '{file_to_upload}': {e}"
+                            )
+                    continue
 
             # Upload Step
             s3_filename = os.path.basename(
@@ -567,11 +572,12 @@ def main():
         logging.info(
             "Backup uploads finished. "
             f"Successful uploads: {successful_uploads}, "
-            f"Failed dumps/encryption: {failed_dumps}, "
+            f"Failed dumps: {failed_dumps}, "
+            f"Failed encryptions: {failed_encryptions}, "
             f"Failed uploads: {failed_uploads}"
         )
 
-        if failed_dumps or failed_uploads:
+        if failed_dumps or failed_encryptions or failed_uploads:
             fail(
                 "Backup run was incomplete. "
                 "Skipping retention to preserve existing recovery points."
