@@ -292,8 +292,7 @@ def cleanup_old_backups(
     output = run_command(list_command)
 
     if output is None:  # Check for explicit failure from run_command
-        logging.error("Failed to list S3 bucket contents for cleanup.")
-        return
+        fail("Failed to list S3 bucket contents for cleanup.")
     if not output:  # Handle empty output (bucket/prefix exists but is empty)
         logging.info(f"No files found in s3://{bucket}/{prefix}/. No cleanup needed.")
         return
@@ -322,10 +321,9 @@ def cleanup_old_backups(
             f"Cleanup cutoff date (UTC): {cutoff_date.strftime('%Y-%m-%d %H:%M:%S %Z')}"
         )
     except (ValueError, IndexError):
-        logging.error(
+        fail(
             f"Invalid format for DELETE_OLDER_THAN: '{older_than_str}'. Expected format like '30 days'. Aborting cleanup."
         )
-        return
 
     deleted_count = 0
     kept_count = 0
@@ -405,6 +403,8 @@ def cleanup_old_backups(
     logging.info(
         f"Summary: Deleted={deleted_count}, Kept={kept_count}, Skipped (Inactive DB)={skipped_db_count}, Skipped (Pattern Mismatch)={skipped_pattern_count}, Errors={error_count}"
     )
+    if error_count:
+        fail(f"Retention cleanup failed with {error_count} errors.")
 
 
 def main():
