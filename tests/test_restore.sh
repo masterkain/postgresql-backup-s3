@@ -7,7 +7,7 @@ private=$(mktemp -d)
 backup_image=${BACKUP_TEST_IMAGE:-masterkain/postgresql-backup-s3:18.3.2}
 postgres_image=${POSTGRES_TEST_IMAGE:-postgres:18.6-bookworm}
 cleanup() {
-  docker rm -f "$trial-client" "$trial-db" >/dev/null 2>&1 || true
+  docker rm -f -v "$trial-client" "$trial-db" >/dev/null 2>&1 || true
   docker network rm "$trial" >/dev/null 2>&1 || true
   rm -rf "$private"
 }
