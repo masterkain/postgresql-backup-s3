@@ -141,7 +141,7 @@ def dump_database(db_name, postgres_opts, dest_file):
     command = (
         "set -o pipefail; "
         f"pg_dump {postgres_opts} --no-password --dbname={quoted_db_name} "
-        "--format=plain --no-owner --clean --no-acl "
+        "--format=plain --no-owner --clean --if-exists --no-acl "
         f"| gzip > {quoted_dest_file}"
     )
     # Log a less verbose version of the command for security/clarity
